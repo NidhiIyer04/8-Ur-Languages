@@ -1,0 +1,243 @@
+BEGIN
+
+MODE PLAYER = STRUCT(
+  STRING name,
+  INT room,
+  INT clues,
+  INT warnings,
+  INT coins,
+  BOOL compass,
+  BOOL alive,
+  BOOL expelled
+);
+
+PROC line = VOID:
+(
+  print(("----------------------------------------", newline))
+);
+
+PROC room name = (INT n) STRING:
+(
+  IF n = 1 THEN "Dormitory Escape"
+  ELIF n = 2 THEN "Grand Gallery"
+  ELIF n = 3 THEN "Crooked Library"
+  ELIF n = 4 THEN "Kitchen Tunnels"
+  ELIF n = 5 THEN "Clocktower Passage"
+  ELSE "Forgotten Dungeon"
+  FI
+);
+
+PROC show status = (PLAYER p) VOID:
+(
+  line;
+  print(("Name     : ", name OF p, newline));
+  print(("Room     : ", room name(room OF p), newline));
+  print(("Clues    : ", whole(clues OF p,0), newline));
+  print(("Warnings : ", whole(warnings OF p,0), "/3", newline));
+  print(("Coins    : ", whole(coins OF p,0), newline));
+  print(("Compass  : ", IF compass OF p THEN "FOUND" ELSE "MISSING" FI, newline));
+  line
+);
+
+PROC add warning = (REF PLAYER p, STRING msg) VOID:
+(
+  print((msg, newline));
+  warnings OF p +:= 1;
+
+  IF warnings OF p >= 3 THEN
+    expelled OF p := TRUE
+  FI
+);
+
+PROC talk portrait = (REF PLAYER p) VOID:
+(
+  INT r := room OF p;
+
+  line;
+
+  IF r = 1 THEN
+
+    print(("Portrait of Mildred:", newline));
+    print(("Sneaking out before sunrise. Growth.", newline));
+    clues OF p +:= 1
+
+  ELIF r = 2 THEN
+
+    print(("Portrait of Sir Cedric:", newline));
+    print(("The thief ran where silence is illegal.", newline));
+    print(("That probably means the kitchen.", newline));
+    clues OF p +:= 1
+
+  ELIF r = 3 THEN
+
+    print(("Portrait of Librarian Moss:", newline));
+    print(("Riddle time.", newline));
+    print(("What room has many keys but opens no doors?", newline));
+    print(("1) Kitchen", newline));
+    print(("2) Library", newline));
+    print(("3) Pond", newline));
+    print(("Choice: "));
+
+    INT a;
+    read((a));
+
+    IF a = 2 THEN
+      print(("Correct. Historic moment.", newline));
+      clues OF p +:= 1
+    ELSE
+      add warning(p, "Wrong. The portrait notes your confidence.")
+    FI
+
+  ELIF r = 4 THEN
+
+    print(("Portrait of Chef Barnaby:", newline));
+    print(("Flour tracks led toward the tower.", newline));
+    coins OF p +:= 5;
+    clues OF p +:= 1;
+    print(("You receive 5 apology coins.", newline))
+
+  ELIF r = 5 THEN
+
+    print(("Portrait of Ada and Ena:", newline));
+    print(("We saw everything.", newline));
+    print(("We understood nothing.", newline));
+    print(("Try the dungeon.", newline));
+    clues OF p +:= 1
+
+  ELSE
+
+    print(("Portrait of Unknown Founder:", newline));
+    print(("About time.", newline))
+
+  FI;
+
+  line
+);
+
+PROC search room = (REF PLAYER p) VOID:
+(
+  INT r := room OF p;
+
+  IF r = 1 THEN
+
+    print(("You find a hidden passage behind laundry.", newline));
+    clues OF p +:= 1
+
+  ELIF r = 2 THEN
+
+    print(("One frame is warm to the touch.", newline));
+    clues OF p +:= 1
+
+  ELIF r = 3 THEN
+
+    print(("You pull a suspicious book.", newline));
+    add warning(p, "A shelf falls loudly. Staff are alerted.")
+
+  ELIF r = 4 THEN
+
+    print(("You inspect flour sacks.", newline));
+    print(("A bootprint points onward.", newline));
+    clues OF p +:= 1
+
+  ELIF r = 5 THEN
+
+    print(("Inside a clock gear is a brass key.", newline));
+    clues OF p +:= 1
+
+  ELSE
+
+    print(("A locked chest waits in the dark.", newline));
+
+    IF clues OF p >= 5 THEN
+      print(("You open it.", newline));
+      print(("Inside lies the Headmaster's Family Compass.", newline));
+      compass OF p := TRUE
+    ELSE
+      add warning(p, "Too noisy. Someone writes your name down.")
+    FI
+
+  FI
+);
+
+PROC move next = (REF PLAYER p) VOID:
+(
+  IF room OF p < 6 THEN
+    room OF p +:= 1
+  ELSE
+    print(("Nowhere deeper to go.", newline))
+  FI
+);
+
+print(("Blackthorn Academy", newline));
+print(("there's a lesser known dungeon in the blackthorn academy castle, there's a compass in there that belonged to the headmaster's family you are about to be expelled so you decide the only way out is if you find this item, you escape, hide and take hints from portraits, some give you riddles some give you sarcasm, some make fun of you. wrong moves could get you killed or worse expelled.", newline));
+print((newline));
+print(("Enter your name: "));
+
+STRING pname;
+read((pname));
+
+PLAYER hero :=
+(
+  pname,
+  1,
+  0,
+  0,
+  0,
+  FALSE,
+  TRUE,
+  FALSE
+);
+
+WHILE alive OF hero AND NOT expelled OF hero AND NOT compass OF hero DO
+
+  show status(hero);
+
+  print(("What now?", newline));
+  print(("1) Talk to portrait", newline));
+  print(("2) Search room", newline));
+  print(("3) Move deeper", newline));
+  print(("4) Hide", newline));
+  print(("5) Quit", newline));
+  print(("Choice: "));
+
+  INT c;
+  read((c));
+
+  IF c = 1 THEN
+    talk portrait(hero)
+  ELIF c = 2 THEN
+    search room(hero)
+  ELIF c = 3 THEN
+    move next(hero)
+  ELIF c = 4 THEN
+    print(("You hide professionally.", newline))
+  ELSE
+    alive OF hero := FALSE
+  FI
+
+OD;
+
+line;
+
+BOOL won := compass OF hero;
+
+IF won THEN
+  print(("You return the compass.", newline));
+  print(("Your expulsion is reconsidered.", newline))
+ELIF expelled OF hero THEN
+  print(("You have been expelled.", newline))
+ELSE
+  print(("You quietly leave the academy.", newline))
+FI;
+
+print(("SAVE:",
+       name OF hero, ",",
+       whole(room OF hero,0), ",",
+       whole(clues OF hero,0), ",",
+       whole(coins OF hero,0), ",",
+       whole(warnings OF hero,0), ",",
+       IF won THEN "1" ELSE "0" FI, ",",
+       IF expelled OF hero THEN "1" ELSE "0" FI,
+       newline))
+
+END
